@@ -1,0 +1,61 @@
+deploy:
+  replicas: 1
+  app: server-bops
+  image:
+    tag: p_29
+
+service:
+  readinessProbe:
+    httpGet:
+      path: "/bops/go"
+  
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: "/bops/go"
+
+  ingress:
+    enabled: true
+    tls:
+    - hosts:
+      - bops.hhu.com
+      secretName: hhu-tls    
+    annotations:
+      # 如果配置了https，就可以让http跳转至https；如果没有配置https证书就不跳转
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/enable-rewrite-log: "true"
+      # 改写cookie path，将path为 /bops 的cookie改成路径为 /
+      nginx.ingress.kubernetes.io/proxy-cookie-path: "/bops /"
+      nginx.ingress.kubernetes.io/ssl-ciphers: "ALL:!aNULL:!EXPORT56:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP"
+      nginx.ingress.kubernetes.io/server-snippet: |
+        # 静态资源
+        rewrite /$ /bops/resources/dist/index.html break;
+        rewrite /resources/dist/(.*) /bops/resources/dist/$1 break;
+        rewrite /bim-resource/ueditor/(.*) /bim-resource/ueditor$1 break;
+
+        # portal
+        rewrite /api/stores/oss/policy($|.*) /portal/stores/oss/policy$1 break;
+        # bops
+        rewrite /api($|.*) /bops/api$1 break;
+    serpaths:
+      - hosts: bops.hhu.com
+        extraPath:
+        - path: /bops/api
+          serviceName: "server-bops"
+          servicePort: 80
+
+        - path: /bops/go
+          serviceName: "server-bops"
+          servicePort: 80
+        
+        - path: /portal/stores/oss/policy
+          serviceName: "server-portal"
+          servicePort: 80
+
+        - path: /bops/resources/dist
+          serviceName: "bops-static"
+          servicePort: 80
+
+        - path: /bim-resource/ueditor
+          serviceName: "bops-static"
+          servicePort: 80

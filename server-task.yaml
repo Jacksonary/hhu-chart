@@ -1,0 +1,18 @@
+deploy:
+  app: server-task
+  image:
+    tag: p_13
+  updateStrategy: 
+    rollingUpdate:
+      maxUnavailable: 50%
+      maxSurge: 1
+
+service:
+  readinessProbe:
+    httpGet:
+      path: "/task/go"
+  
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: "/task/go"

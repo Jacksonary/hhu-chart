@@ -1,0 +1,19 @@
+deploy:
+  app: server-shop
+  replicas: 1
+  image:
+    tag: p_24
+  updateStrategy: 
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+
+service:
+  readinessProbe:
+    httpGet:
+      path: "/shops/go"
+  
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: "/shops/go"

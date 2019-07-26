@@ -1,0 +1,18 @@
+deploy:
+  app: server-search
+  image:
+    tag: p_13
+  updateStrategy: 
+    rollingUpdate:
+      maxUnavailable: 50%
+      maxSurge: 1
+
+service:
+  readinessProbe:
+    httpGet:
+      path: "/search/go"
+  
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: "/search/go"

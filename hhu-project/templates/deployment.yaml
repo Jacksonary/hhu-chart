@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.deploy.app }}
+  labels:
+    service-cluster: {{ .Values.deploy.serviceCluster }}
+    app: {{ .Values.deploy.app }}
+    project-type: {{ .Values.deploy.projectType}}
+spec:
+  replicas: {{ .Values.deploy.replicas }}
+  revisionHistoryLimit: 3
+#  progressDeadlineSeconds: 300
+  strategy:
+{{ toYaml .Values.deploy.updateStrategy | indent 4 }}
+  minReadySeconds: {{ .Values.deploy.minReadySeconds }}
+  selector:
+    matchLabels:
+      service-cluster: {{ .Values.deploy.serviceCluster }}
+      app: {{ .Values.deploy.app }}
+      project-type: {{ .Values.deploy.projectType}}
+  template:
+    metadata:
+      annotations:
+{{- if .Values.deploy.podAnnotations }}
+{{ toYaml .Values.deploy.podAnnotations | indent 8 }}
+{{- end }}
+      labels:
+        service-cluster: {{ .Values.deploy.serviceCluster }}
+        app: {{ .Values.deploy.app }}
+        project-type: {{ .Values.deploy.projectType}}
+    spec:
+      hostAliases:
+{{- if .Values.deploy.hostAlias }}
+{{ toYaml .Values.deploy.hostAlias | indent 6 }}
+{{- end }}
+      containers:
+      - name: {{ .Values.deploy.app }}
+        image: {{ .Values.deploy.image.registry }}/{{ .Values.deploy.image.repository }}/{{ .Values.deploy.app }}:{{ required "A valid .Values.deploy.image.tag entry required!" .Values.deploy.image.tag }}
+        imagePullPolicy: {{ default "" .Values.deploy.image.pullPolicy | quote }}
+{{- if .Values.log.extraVolumeMounts }}
+        volumeMounts:
+{{ toYaml .Values.log.extraVolumeMounts | indent 8}}
+{{- end }}
+        env:
+        - name: JAVA_OPTS
+          value: {{ .Values.service.javaOptions | quote }}
+        - name: APOLLO_ENV
+          value: {{ .Values.appolloEnv }}
+        - name: APOLLO_CONFIG_SERVICE
+          value: {{ .Values.apolloConfigService }}
+        {{- range .Values.otherEnvs}}
+        - name: {{ .otherEnvName }}
+          value: {{ .otherEnvValue }}
+        {{- end}}
+        {{- if .Values.service.readinessProbe.enabled }}
+        readinessProbe:
+{{ toYaml .Values.service.readinessProbe | indent 10 }}
+        {{- end }}
+        {{- if .Values.service.livenessProbe.enabled }}
+        livenessProbe:
+{{ toYaml .Values.service.livenessProbe | indent 10 }}
+        {{- end }}
+        resources:
+{{ toYaml .Values.deploy.resources | indent 10 }}
+{{- if (or .Values.filebeat .Values.log.extraVolumeMounts) }}
+      - name: filebeat
+        image: "{{ .Values.filebeat.repository }}:{{ .Values.filebeat.tag }}"
+        imagePullPolicy: {{ .Values.filebeat.pullPolicy }}
+        volumeMounts:
+        - name: filebeat-config
+          mountPath: /usr/share/filebeat/filebeat.yml
+          subPath: filebeat.yml
+          readOnly: true
+{{ toYaml .Values.log.extraVolumeMounts | indent 8}}
+        resources:
+{{ toYaml .Values.filebeat.resources | indent 10 }}
+{{- end}}
+      {{- if .Values.deploy.image.pullSecrets }}
+      imagePullSecrets:
+        {{- range .Values.deploy.image.pullSecrets }}
+        - name: {{ . }}
+        {{- end}}
+      {{- end}}
+    {{- if .Values.deploy.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.deploy.nodeSelector | indent 8 }}
+    {{- end }}
+    {{- if .Values.deploy.tolerations }}
+      tolerations:
+{{ toYaml .Values.deploy.tolerations | indent 8 }}
+    {{- end }}
+    {{- if .Values.deploy.affinity }}
+      affinity:
+{{ toYaml .Values.deploy.affinity | indent 8 }}
+    {{- end }}
+{{- if .Values.log.extraVolumes }}
+      volumes:
+      - name: filebeat-config
+        secret:
+          secretName: filebeat
+{{ toYaml .Values.log.extraVolumes | indent 6}}
+{{- end }}

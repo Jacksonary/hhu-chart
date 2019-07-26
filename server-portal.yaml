@@ -1,0 +1,97 @@
+deploy:
+  app: server-portal
+  image:
+    tag: p_15
+  updateStrategy: 
+    rollingUpdate:
+      maxUnavailable: 50%
+      maxSurge: 1
+
+service:
+  readinessProbe:
+    httpGet:
+      path: "/portal/go"
+  
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: "/portal/go"
+
+  ingress:
+    enabled: true
+    tls: 
+      - hosts:
+        - api.hhu.com
+        secretName: hhu-tls
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-ciphers: "ALL:!aNULL:!EXPORT56:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP"
+      nginx.ingress.kubernetes.io/server-snippet: |
+        # 配置多个跨域
+        set $corsHost '';
+        set $httpHost '';
+        set $httpHeaders 'DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization,Content-Type,X-Forwarded-For,xfilecategory,xfilename,xfilesize';
+        if ( $http_origin ~ https://www.hhu.com){
+                set $corsHost $http_origin;
+                set $httpHost 'www.hhu.com';
+        }
+        if ( $http_origin ~ https://m.hhu.com){
+                set $corsHost $http_origin;
+                set $httpHost 'm.hhu.com';
+        }
+
+        # 注意这里必须加 always ，否则不生效
+        add_header Access-Control-Allow-Origin $corsHost always;
+        add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS, PATCH';
+        add_header Access-Control-Allow-Headers $httpHeaders;
+        add_header Access-Control-Allow-Credentials 'true';
+
+        # analyzer
+        rewrite /behavior/data($|.*) /analyzer/behavior/data$1 break;
+        rewrite /ui/event($|.*) /analyzer/ui/event$1 break;
+        # mine
+        rewrite /private($|.*) /mine/private$1 break; 
+        rewrite /mine($|.*) /mine$1 break; 
+        # shop
+        rewrite /shops($|.*) /shops$1 break; 
+        # oss callback
+        rewrite /internal/oss($|.*) /portal/internal/oss$1 break;
+        # task
+        rewrite /internal($|.*) /task/internal$1 break; 
+        # portal
+        rewrite /($|.*) /portal/$1 break; 
+      nginx.ingress.kubernetes.io/configuration-snippet: |
+        if ($request_method = OPTIONS ) {
+          return 200;
+        }
+    serpaths:
+      - hosts: api.hhu.com
+        extraPath:
+
+        # analyzer（对外，限制为2个，其他接口只能内网访问）
+        - path: /analyzer/behavior/data
+          serviceName: "server-analyzer"
+          servicePort: 80
+
+        - path: /analyzer/ui/event
+          serviceName: "server-analyzer"
+          servicePort: 80
+
+        # mine
+        - path: /mine
+          serviceName: "server-mine"
+          servicePort: 80
+
+        # task（对外）
+        - path: /task/internal
+          serviceName: "server-task"
+          servicePort: 80
+        
+        # shop
+        - path: /shops
+          serviceName: "server-shop"
+          servicePort: 80
+
+        # portal
+        - path: /portal
+          serviceName: "server-portal"
+          servicePort: 80

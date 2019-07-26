@@ -1,0 +1,42 @@
+deploy:
+  app: server-account
+  replicas: 1
+  image:
+    tag: p_25
+  updateStrategy: 
+    rollingUpdate:
+      maxUnavailable: 0
+      # 最大允许超出已配置replicas几个Pod
+      maxSurge: 1
+
+service:
+  readinessProbe:
+    httpGet:
+      path: "/account/go"
+  
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: "/account/go"
+
+  ingress:
+    enabled: true
+    tls: 
+      - hosts:
+        - account.hhu.com
+        secretName: hhu-tls
+    annotations: 
+      nginx.ingress.kubernetes.io/rewrite-target: /account/$1
+      nginx.ingress.kubernetes.io/proxy-cookie-path: "/account /"
+      # 只配置一个跨域
+      nginx.ingress.kubernetes.io/enable-cors: "true"
+      nginx.ingress.kubernetes.io/cors-allow-origin: "https://www.hhu.com"
+      nginx.ingress.kubernetes.io/cors-allow-methods: "GET, PUT, POST, DELETE, PATCH, OPTIONS"
+      nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
+      nginx.ingress.kubernetes.io/ssl-ciphers: "ALL:!aNULL:!EXPORT56:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP"
+    serpaths:
+      - hosts: account.hhu.com
+        extraPath:
+        - path: /($|.*)
+          serviceName: "server-account"
+          servicePort: 80

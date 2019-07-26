@@ -1,0 +1,50 @@
+deploy:
+  app: server-ssr
+  projectType: vue
+  image:
+    tag: p_44
+  updateStrategy: 
+    rollingUpdate:
+      maxUnavailable: 50%
+      maxSurge: 1
+
+service:
+  # 将3333作为目标端口代理到80 
+  port: 3333
+  readinessProbe:
+    httpGet:
+      path: "/go"
+      port: 3333
+  
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: "/go"
+      port: 3333
+    livenessProbe:
+    failureThreshold: 5
+
+  ingress:
+    enabled: true
+    tls: 
+      - hosts:
+        - www.hhu.com
+        secretName: hhu-tls
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/ssl-ciphers: "ALL:!aNULL:!EXPORT56:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP"
+      nginx.ingress.kubernetes.io/server-snippet: |
+        if ($http_user_agent ~* "(.*(a|A)ndroid.*)|(.*i(p|P)hone.*)|(.*(w|W)indows (p|P)hone.*)$"){
+          rewrite ^ https://k8s-m.hhu.com redirect;
+          break;
+        } 
+    serpaths:
+      - hosts: www.hhu.com
+        extraPath:
+        - path: /
+          serviceName: "server-ssr"
+          servicePort: 3333
+
+otherEnvs:
+  - otherEnvName: NODE_RUN_ENV
+    otherEnvValue: production 

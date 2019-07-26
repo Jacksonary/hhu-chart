@@ -1,0 +1,192 @@
+deploy:
+  replicas: 2
+  projectType: java
+  serviceCluster: hhu-server
+  
+  image:
+    registry: registry.cn-beijing.aliyuncs.com
+    repository: hhu_pro
+    tag: latest
+    pullSecrets:
+      - hhu-aliyun-beijing-registry-credential
+    PullPolicy: Always
+  
+  # 更新策略
+  updateStrategy: 
+    type: RollingUpdate
+    rollingUpdate:
+      # 最大可以允许有几个（可以是百分比）Pod不对外提供服务，默认为25%。注：当maxSurge设置为0时，maxUnavailable禁止为0
+      maxUnavailable: 1
+      # 最大允许超出已配置replicas几个（可以是百分比）Pod，默认为25%。注：当maxUnavailable设置为0时，maxSurge禁止为0
+      maxSurge: 1
+
+  minReadySeconds: 0
+  
+  # 对接阿里云arms监控使用
+  podAnnotations: {}
+  #  armsPilotAutoEnable: 'on'
+  #  armsPilotCreateAppName: ngauth-cloud-admin
+  
+  # 需要在pod中添加hosts时使用，测试环境经常会遇到
+  hostAlias:
+  # - ip: "10.129.60.198"
+  #   hostnames:
+  #   - "config-auth-kube.glodon.com"
+  
+  resources: 
+    requests:
+      memory: 1024Mi
+      cpu: 0.5
+    limits:
+      cpu: 1
+      memory: 1536Mi
+  
+  tolerations: []
+  #  - key: "key"
+  #    operator: "Equal|Exists"
+  #    value: "value"
+  #    effect: "NoSchedule|PreferNoSchedule|NoExecute(1.6 only)"
+  
+  affinity: {}
+  
+  nodeSelector: {}
+  #  auth: "true"
+
+# sidecar filebeat 采集文本日志使用，如果日志是标准输出可关闭
+log: {}
+#  extraVolumeMounts: 
+#    - name: log-dir
+#      mountPath: /opt/logs
+#  
+#  extraVolumes: 
+#    - name: log-dir
+#      emptyDir: {}
+
+filebeat: {}
+#  repository: registry.cn-beijing.aliyuncs.com/glodon-ops/filebeat-oss
+#  tag: 6.7.0
+#  pullPolicy: IfNotPresent
+#  resources:
+#    requests:
+#      memory: 16Mi
+#      cpu: 100m
+#    limits:
+#      cpu: 50m
+#      memory: 64Mi
+#  config:
+#    filebeat.config:
+#      prospectors:
+#        path: ${path.config}/prospectors.d/*.yml
+#        reload.enabled: false
+#      modules:
+#        path: ${path.config}/modules.d/*.yml
+#        reload.enabled: false
+#  
+#    processors:
+#      - add_cloud_metadata:
+#  
+#    filebeat.prospectors:
+#    - type: log
+#      enabled: true
+#      paths:
+#        - /opt/logs/*_app.log
+#      fields:
+#        type: bfpaaslog
+#      fields_under_root: true
+#      multiline.pattern: '^[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}'
+#      multiline.negate: true
+#      multiline.match: after
+#
+#    - type: log
+#      paths:
+#        - /opt/logs/*_access.*.log
+#      fields:
+#        type: bfaccesslog
+#      fields_under_root: true
+#
+#    - type: log
+#      paths:
+#        - /opt/logs/*_stat.json
+#      fields:
+#        type: bfstatlog
+#      fields_under_root: true
+#      json.keys_under_root: true
+#      json.add_error_key: true
+#      json.message_key: log
+#  
+#    output.kafka:
+#      enabled: true
+#      hosts: ["10.127.46.21:9092","10.127.46.22:9092","10.127.46.23:9092"]
+#      topic: k8slog
+#    registry_flush: 3s
+
+service:
+  port: 8080
+  # JVM参数可根据具体应用做调正
+  javaOptions: "-Duser.timezone=Asia/Shanghai -server -Xms1024m -Xmx1536m -XX:PermSize=128m  -XX:MaxNewSize=1024M  -XX:MaxPermSize=1024m -XX:+DisableExplicitGC -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -Dproduction.mode=test -Ddatacenter=kubernetes"
+
+  readinessProbe:
+    enabled: true
+    httpGet:
+      path: "/healthcheck"
+      port: 8080
+    periodSeconds: 20
+    initialDelaySeconds: 60
+    failureThreshold: 3
+  
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: "/healthcheck"
+      port: 8080
+    initialDelaySeconds: 180 
+    periodSeconds: 30
+  
+  ingress:
+    enabled: false
+    annotations: 
+      kubernetes.io/ingress.class: nginx
+      # 指明SLB实例地址类型为公网类型（默认就是公网：default），私网SLB类型为intranet，如果没有用阿里云可以直接不配
+      service.beta.kubernetes.io/alicloud-loadbalancer-address-type: default
+      service.beta.kubernetes.io/alicloud-loadbalancer-id: <slb-id>
+      # 连接超时时间，默认为5s
+      nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
+      # 后端服务器响应超时时间，默认为60s
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
+      # 后端服务器回转数据超时时间，默认为60s
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "30"
+      # #客户端上传文件，最大大小，默认为20m
+      nginx.ingress.kubernetes.io/proxy-body-size: "1024m"
+    # serpaths:
+    #   - hosts: config-auth-kube.glodon.com
+    #     extraPath:
+    #     - path: /
+    #       serviceName: "front-config-admin"
+    #       servicePort: 80
+    #     - path: /data
+    #       serviceName: "test"
+    #       servicePort: 8089
+    #   - hosts: config-test.glodon.com
+    #     extraPath:
+    #     - path: /
+    #       serviceName: "front-config-admin"
+    #       servicePort: 8011
+    #     - path: /data
+    #       serviceName: "test"
+    #       servicePort: 8022
+    # tls: 
+    #   - hosts:
+    #     - config-auth-kube.glodon.com
+    #     secretName: ingress-tls
+
+# 配置弹性伸缩
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 50
+  targetMemoryUtilizationPercentage: 50
+
+# apollo的环境配置
+appolloEnv: pro
+apolloConfigService: http://hhu-apollo-config-pro.glodon.com

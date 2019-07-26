@@ -1,0 +1,18 @@
+deploy:
+  app: server-mine
+  image:
+    tag: p_13
+  updateStrategy: 
+    rollingUpdate:
+      maxUnavailable: 50%
+      maxSurge: 1
+
+service:
+  readinessProbe:
+    httpGet:
+      path: "/mine/go"
+  
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: "/mine/go"

@@ -1,0 +1,43 @@
+deploy:
+  app: server-analyzer
+  image:
+    tag: p_26
+  updateStrategy: 
+    rollingUpdate:
+      maxUnavailable: 50%
+      maxSurge: 1
+
+service:
+  readinessProbe:
+    httpGet:
+      path: "/analyzer/go"
+  
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: "/analyzer/go"
+
+  ingress:
+    enabled: true
+    tls: 
+      - hosts:
+        - k8s-internal.hhu.com
+        secretName: hhu-tls
+    annotations: 
+      # 指明SLB实例地址类型为私网类型
+      service.beta.kubernetes.io/alicloud-loadbalancer-address-type: intranet
+      service.beta.kubernetes.io/alicloud-loadbalancer-id: <slb-id>
+      # 指明支持的加密套件
+      nginx.ingress.kubernetes.io/ssl-ciphers: "ALL:!aNULL:!EXPORT56:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP"
+    serpaths:
+      - hosts: k8s-internal.hhu.com
+        extraPath:
+        - path: /analyzer
+          serviceName: "server-analyzer"
+          servicePort: 80
+        - path: /search
+          serviceName: "server-search"
+          servicePort: 80
+        - path: /task
+          serviceName: "server-task"
+          servicePort: 80
