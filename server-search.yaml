@@ -16,3 +16,8 @@ service:
     enabled: true
     httpGet:
       path: "/search/go"
+
+# 远程调式参数
+remoteDebugArgs: -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=18080
+remoteDebugPort: 18080
+remoteDebugNodePort: 30506

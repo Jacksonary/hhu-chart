@@ -15,5 +15,5 @@ LABEL "server-name"="server-task"
 RUN mkdir -p /data/service
 WORKDIR /data/service
 COPY  server-task/target/server-task.jar .
-CMD java $JAVA_OPTS -Dspring.profiles.active=$SPRING_ENV -Denv=$APOLLO_ENV -Dapollo.configService=$APOLLO_CONFIG_SERVICE -Dserver.port=8080 -Djasypt.encryptor.password=$SECRET_KEY -jar server-task.jar
+CMD java $JAVA_OPTS -Dspring.profiles.active=$SPRING_ENV -Denv=$APOLLO_ENV -Dapollo.configService=$APOLLO_CONFIG_SERVICE -Dserver.port=8080 $REMOTE_DEBUG_ARGS -jar server-task.jar
 ```

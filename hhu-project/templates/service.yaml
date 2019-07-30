@@ -12,7 +12,14 @@ spec:
   - port: 80
     targetPort: {{ .Values.service.port }}
     name: http
+  # 配置远程debug的端口映射  
+  - port: {{.Values.remoteDebugPort}}
+    targetPort: {{.Values.remoteDebugPort}}
+    nodePort: {{.Values.remoteDebugNodePort}}
+    name: remote-debug
   selector:
     service-cluster: {{ .Values.deploy.serviceCluster }}
     app: {{ .Values.deploy.app }}
     project-type: java
+  # 如果不使用远程debug可以不配置type，一般使用默认的ClusterIp即可  
+  type: NodePort

@@ -40,3 +40,8 @@ service:
         - path: /($|.*)
           serviceName: "server-account"
           servicePort: 80
+
+# 远程调式参数，选用18080端口，通过nodePort对外暴露，不需要可以不配置
+remoteDebugArgs: -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=18080
+remoteDebugPort: 18080
+remoteDebugNodePort: 30502

@@ -48,6 +48,9 @@ spec:
           value: {{ .Values.appolloEnv }}
         - name: APOLLO_CONFIG_SERVICE
           value: {{ .Values.apolloConfigService }}
+        # 配置远程debug  
+        - name: REMOTE_DEBUG_ARGS
+          value: {{ .Values.remoteDebugArgs }}
         {{- range .Values.otherEnvs}}
         - name: {{ .otherEnvName }}
           value: {{ .otherEnvValue }}
