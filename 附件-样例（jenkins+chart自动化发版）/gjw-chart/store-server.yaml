@@ -1,0 +1,16 @@
+deploy:
+  app: store-server
+  image:
+    tag: p_16
+
+service:
+  readinessProbe:
+    httpGet:
+      path: "/gjw-store/go"
+  
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: "/gjw-store/go"
+
+apolloServerId: -Dapp.id=zHSAMxJhfDmcMow2UDoAX7VjuTyYEz19_gjw-store

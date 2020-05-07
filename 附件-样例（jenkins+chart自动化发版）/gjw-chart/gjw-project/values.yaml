@@ -1,0 +1,200 @@
+deploy:
+  replicas: 2
+  serviceCluster: gjw-server
+  
+  image:
+    registry: registry.cn-beijing.aliyuncs.com
+    repository: gjw_hwy_pro
+    tag: latest
+    pullSecrets:
+      - gjw-aliyun-beijing-registry-credential
+    PullPolicy: Always
+  
+  updateStrategy: 
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+
+  minReadySeconds: 0
+  
+  # 对接阿里云arms监控使用
+  podAnnotations: {}
+  #  armsPilotAutoEnable: 'on'
+  #  armsPilotCreateAppName: ngauth-cloud-admin
+  
+  hostAlias:
+   - ip: "10.125.80.183"
+     hostnames:
+     - "www.goujianwu.com"
+     - "m.goujianwu.com"
+     - "account.goujianwu.com"
+     - "bops.goujianwu.com"
+     - "api.goujianwu.com"
+     - "shop-console.goujianwu.com"
+     - "goujianwu.com"
+     - "k8s-internal.goujianwu.com"
+   - ip: "124.225.167.213"
+     hostnames:
+     - "m.bimface.com"
+   - ip: "101.201.59.50"
+     hostnames:
+     - "api.bimface.com"
+  
+  resources: 
+    requests:
+      memory: 1024Mi
+      cpu: 0.5
+    limits:
+      cpu: 1
+      memory: 2048Mi
+  
+  tolerations: []
+  #  - key: "key"
+  #    operator: "Equal|Exists"
+  #    value: "value"
+  #    effect: "NoSchedule|PreferNoSchedule|NoExecute(1.6 only)"
+  
+  affinity: {}
+  
+  nodeSelector: {}
+  #  auth: "true"
+
+# sidecar filebeat 采集文本日志使用，如果日志是标准输出可关闭
+log: {}
+#  extraVolumeMounts: 
+#    - name: log-dir
+#      mountPath: /data/logs/paas
+#  
+#  extraVolumes: 
+#    - name: log-dir
+#      hostPath: 
+#        path: /data/logs
+
+filebeat: {}
+#  repository: registry.cn-beijing.aliyuncs.com/glodon-ops/filebeat-oss
+#  tag: 6.7.0
+#  pullPolicy: IfNotPresent
+#  resources:
+#    requests:
+#      memory: 16Mi
+#      cpu: 100m
+#    limits:
+#      cpu: 50m
+#      memory: 64Mi
+#  config:
+#    filebeat.config:
+#      prospectors:
+#        path: ${path.config}/prospectors.d/*.yml
+#        reload.enabled: false
+#      modules:
+#        path: ${path.config}/modules.d/*.yml
+#        reload.enabled: false
+#  
+#    processors:
+#      - add_cloud_metadata:
+#  
+#    filebeat.prospectors:
+#    - type: log
+#      enabled: true
+#      paths:
+#        - /opt/logs/*_app.log
+#      fields:
+#        type: bfpaaslog
+#      fields_under_root: true
+#      multiline.pattern: '^[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}'
+#      multiline.negate: true
+#      multiline.match: after
+#
+#    - type: log
+#      paths:
+#        - /opt/logs/*_access.*.log
+#      fields:
+#        type: bfaccesslog
+#      fields_under_root: true
+#
+#    - type: log
+#      paths:
+#        - /opt/logs/*_stat.json
+#      fields:
+#        type: bfstatlog
+#      fields_under_root: true
+#      json.keys_under_root: true
+#      json.add_error_key: true
+#      json.message_key: log
+#  
+#    output.kafka:
+#      enabled: true
+#      hosts: ["10.127.46.21:9092","10.127.46.22:9092","10.127.46.23:9092"]
+#      topic: k8slog
+#    registry_flush: 3s
+
+service:
+  port: 8080
+  javaOptions: "-Duser.timezone=Asia/Shanghai -server -Xms1024m -Xmx1536m -XX:PermSize=128m  -XX:MaxNewSize=1024M  -XX:MaxPermSize=1024m -XX:+DisableExplicitGC -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -Dproduction.mode=pro -Ddatacenter=kubernetes"
+
+  readinessProbe:
+    enabled: true
+    httpGet:
+      path: "/healthcheck"
+      port: 8080
+    periodSeconds: 20
+    initialDelaySeconds: 60
+    failureThreshold: 3
+
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: "/healthcheck"
+      port: 8080
+    initialDelaySeconds: 180 
+    periodSeconds: 30
+
+  lifecycle:
+    enabled: true
+    preStop:
+      exec:
+        command: ["/bin/sh", "-c", "sleep 60"]
+  
+  ingress:
+    enabled: false
+    annotations: 
+      kubernetes.io/ingress.class: nginx
+      kubernetes.io/elb.id: ad4c6cfa-165b-4106-8207-b76b8f50f3d1
+      kubernetes.io/elb.ip: 121.36.19.62
+      nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "30"
+      nginx.ingress.kubernetes.io/proxy-body-size: "1024m"
+    # serpaths:
+    #   - hosts: config-auth-kube.glodon.com
+    #     extraPath:
+    #     - path: /
+    #       serviceName: "front-config-admin"
+    #       servicePort: 80
+    #     - path: /data
+    #       serviceName: "test"
+    #       servicePort: 8089
+    #   - hosts: config-test.glodon.com
+    #     extraPath:
+    #     - path: /
+    #       serviceName: "front-config-admin"
+    #       servicePort: 8011
+    #     - path: /data
+    #       serviceName: "test"
+    #       servicePort: 8022
+    # tls: 
+    #   - hosts:
+    #     - config-auth-kube.glodon.com
+    #     secretName: ingress-tls
+
+# 配置弹性伸缩
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 50
+  targetMemoryUtilizationPercentage: 50
+
+apolloServerId: -Dapp.id=zHSAMxJhfDmcMow2UDoAX7VjuTyYEz19_account
+apolloConfig: -Denv=pro -Dapollo.configService=https://aecore-apollo.glodon.com/apollo-config -Dapollo.bootstrap.namespaces=application,gjw-core -Dpaas.account.serviceUrl=https://account.glodon.com -Dpaas.account.serviceKey=zHSAMxJhfDmcMow2UDoAX7VjuTyYEz19 -Dpaas.account.serviceSecret=ACZVaFaS4QzlsBV2yBYuk0OrjsW2yzOx

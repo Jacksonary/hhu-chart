@@ -1,0 +1,98 @@
+deploy:
+  app: portal-server
+  image:
+    tag: p_8
+
+service:
+  readinessProbe:
+    httpGet:
+      path: "/gjw-portal/go"
+  
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: "/gjw-portal/go"
+
+  ingress:
+    enabled: true
+    tls: 
+      - hosts:
+        - api.goujianwu.com
+        secretName: gjw-tls
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-redirect: "false"
+      nginx.ingress.kubernetes.io/ssl-ciphers: "ALL:!aNULL:!EXPORT56:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP"
+      nginx.ingress.kubernetes.io/server-snippet: |
+        if ($request_uri ~* "gjw-(.*)/internal") {
+            return 403;
+        }
+
+        set $corsHost '';
+        set $httpHost '';
+        set $httpHeaders 'DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Authorization,X-GJW-OperationKey,Preview-Authorization,Content-Type,X-Forwarded-For,xfilecategory,xfilename,xfilesize,X-Analyzer-Trigger-Region';
+        if ( $http_origin ~* ^(https?:\/\/.*\.goujianwu\.com) ){
+          set $corsHost $http_origin;
+        }
+
+        add_header Access-Control-Allow-Origin $corsHost always;
+        add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS, PATCH';
+        add_header Access-Control-Allow-Headers $httpHeaders;
+        add_header Access-Control-Allow-Credentials 'true';
+        add_header Access-Control-Expose-Headers 'x-pagination-total-count,X-GJW-OperationKey,x-blacklist-expire';
+
+        # gjw-shop
+        rewrite /console($|.*) /gjw-shop/console$1 break;
+        rewrite /shops/(\d+)/(components|category_tree)($|.*) /gjw-shop/shops/$1/$2$3 break;
+        rewrite /v1/(categories|shop_categories|scenes|shop_components|contribute|wishes|shops|videos)($|.*) /gjw-shop/v1/$1$2 break;
+        rewrite /(shops|public|rfas|categories)($|.*) /gjw-shop/$1$2 break;
+
+        # gjw-portal
+        rewrite /(albums|videos|channels|plugins|route)(.*) /gjw-portal/$1$2 break;
+
+        # gjw-personal
+        rewrite /private($|.*) /gjw-personal/private$1 break;
+        rewrite /operations($|.*) /gjw-personal/private/operations$1 break;
+
+        # gjw-store
+        rewrite /stores($|.*) /gjw-store/stores$1 break;
+
+        # analyzer
+        rewrite /behavior/data($|.*) /analyzer/behavior/data$1 break;
+        rewrite /ui/event($|.*) /analyzer/ui/event$1 break;
+
+        # task旧配置，兼容上个版本的回调
+        rewrite /internal/(translate|job)/callback /gjw-task/bimface/callback/$1 break; 
+        rewrite /task/internal/(.*) /gjw-task/$1 break; 
+      nginx.ingress.kubernetes.io/configuration-snippet: |
+        if ($request_method = OPTIONS ) {
+          return 200;
+        }
+    serpaths:
+      - hosts: api.goujianwu.com
+        extraPath:
+        # gjw-portal
+        - path: /gjw-portal
+          serviceName: "portal-server"
+          servicePort: 80
+
+        # gjw-personal
+        - path: /gjw-personal
+          serviceName: "personal-server"
+          servicePort: 80
+
+        # gjw-shop
+        - path: /gjw-shop
+          serviceName: "shop-server"
+          servicePort: 80
+
+        # gjw-store
+        - path: /gjw-store
+          serviceName: "store-server"
+          servicePort: 80
+
+        # gjw-task
+        - path: /gjw-task
+          serviceName: "task-server"
+          servicePort: 80
+
+apolloServerId: -Dapp.id=zHSAMxJhfDmcMow2UDoAX7VjuTyYEz19_gjw-portal

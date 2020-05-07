@@ -1,0 +1,39 @@
+deploy:
+  app: server-ssr-mobile
+  image:
+    tag: p_8
+
+service:
+  port: 3334
+  
+  readinessProbe:
+    httpGet:
+      path: "/go"
+      port: 3334
+  
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: "/go"
+      port: 3334
+    failureThreshold: 5
+
+  ingress:
+    enabled: true
+    tls: 
+      - hosts:
+        - m.goujianwu.com
+        secretName: gjw-tls
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/ssl-ciphers: "ALL:!aNULL:!EXPORT56:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP"
+    serpaths:
+      - hosts: m.goujianwu.com
+        extraPath:
+        - path: /
+          serviceName: "server-ssr-mobile"
+          servicePort: 3334
+
+otherEnvs:
+  - otherEnvName: NODE_RUN_ENV
+    otherEnvValue: deploy:prod

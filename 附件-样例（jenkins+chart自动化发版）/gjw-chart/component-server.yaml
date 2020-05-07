@@ -1,0 +1,18 @@
+deploy:
+  app: component-server
+  image:
+    tag: p_9
+
+service:
+  readinessProbe:
+    httpGet:
+      path: "/gjw-component/go"
+  
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: "/gjw-component/go"
+
+apolloServerId: -Dapp.id=zHSAMxJhfDmcMow2UDoAX7VjuTyYEz19_gjw-component
+
+remoteDebugNodePort: 30511

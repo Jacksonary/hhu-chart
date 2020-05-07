@@ -1,0 +1,16 @@
+deploy:
+  app: shop-server
+  image:
+    tag: p_26
+
+service:
+  readinessProbe:
+    httpGet:
+      path: "/gjw-shop/go"
+  
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: "/gjw-shop/go"
+
+apolloServerId: -Dapp.id=zHSAMxJhfDmcMow2UDoAX7VjuTyYEz19_gjw-shop

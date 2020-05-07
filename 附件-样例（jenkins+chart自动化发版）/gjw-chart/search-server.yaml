@@ -1,0 +1,16 @@
+deploy:
+  app: search-server
+  image:
+    tag: p_14
+
+service:
+  readinessProbe:
+    httpGet:
+      path: "/gjw-search/go"
+  
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: "/gjw-search/go"
+
+apolloServerId: -Dapp.id=zHSAMxJhfDmcMow2UDoAX7VjuTyYEz19_gjw-search

@@ -1,0 +1,49 @@
+deploy:
+  app: gjw-portal-frontend
+  image:
+    tag: p_21
+
+service:
+  # 将3333作为目标端口代理到80 
+  port: 3333
+  readinessProbe:
+    httpGet:
+      path: "/go"
+      port: 3333
+  
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: "/go"
+      port: 3333
+    livenessProbe:
+    failureThreshold: 5
+
+  ingress:
+    enabled: true
+    tls: 
+      - hosts:
+        - www.goujianwu.com
+        secretName: gjw-tls
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/ssl-ciphers: "ALL:!aNULL:!EXPORT56:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP"
+      nginx.ingress.kubernetes.io/from-to-www-redirect: "true"
+      nginx.ingress.kubernetes.io/server-snippet: |
+        if ($http_user_agent ~* "(.*(a|A)ndroid.*)|(.*i(p|P)hone.*)|(.*(w|W)indows (p|P)hone.*)$"){
+          rewrite ^ https://m.goujianwu.com redirect;
+          break;
+        } 
+    serpaths:
+      - hosts: www.goujianwu.com
+        extraPath:
+        - path: /
+          serviceName: "gjw-portal-frontend"
+          servicePort: 3333
+        - path: /vendors
+          serviceName: "gjw-vendors-frontend"
+          servicePort: 3333
+
+otherEnvs:
+  - otherEnvName: NODE_RUN_ENV
+    otherEnvValue: deploy:prod

@@ -1,0 +1,18 @@
+deploy:
+  app: dataware-gate-server
+  image:
+    tag: p_14
+
+service:
+  readinessProbe:
+    httpGet:
+      path: "/gjw-dataware-gate/go"
+  
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: "/gjw-dataware-gate/go"
+
+apolloServerId: -Dapp.id=zHSAMxJhfDmcMow2UDoAX7VjuTyYEz19_gjw-dataware-gate
+
+#remoteDebugNodePort: 30517

@@ -1,0 +1,28 @@
+deploy:
+  app: dataware-etl-server
+  image:
+    tag: p_20
+
+service:
+  readinessProbe:
+    httpGet:
+      path: "/gjw-dataware-etl/go"
+  
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: "/gjw-dataware-etl/go"
+
+log: 
+  extraVolumeMounts: 
+    - name: log-dir
+      mountPath: /data/logs/paas
+  
+  extraVolumes: 
+    - name: log-dir
+      hostPath: 
+        path: /data/logs/dataware-etl-server
+
+apolloServerId: -Dapp.id=zHSAMxJhfDmcMow2UDoAX7VjuTyYEz19_gjw-dataware-etl
+
+#remoteDebugNodePort: 30517

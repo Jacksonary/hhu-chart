@@ -1,0 +1,41 @@
+deploy:
+  app: gjw-vendors-frontend
+  image:
+    tag: p_4
+
+service:
+  # 将3333作为目标端口代理到80 
+  port: 3333
+  readinessProbe:
+    httpGet:
+      path: "/go"
+      port: 3333
+  
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: "/go"
+      port: 3333
+    livenessProbe:
+    failureThreshold: 5
+
+  ingress:
+    enabled: true
+    tls: 
+      - hosts:
+        - test.goujianwu.com
+        secretName: gjw-tls
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/ssl-ciphers: "ALL:!aNULL:!EXPORT56:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP"
+      nginx.ingress.kubernetes.io/from-to-www-redirect: "true"
+    serpaths:
+      - hosts: test.goujianwu.com
+        extraPath:
+        - path: /
+          serviceName: "gjw-vendors-frontend"
+          servicePort: 3333
+
+otherEnvs:
+  - otherEnvName: NODE_RUN_ENV
+    otherEnvValue: deploy:prod

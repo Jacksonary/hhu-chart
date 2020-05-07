@@ -1,0 +1,109 @@
+@Library('pipeline-lib') _
+def tagName = "${params.ENV[0]}_${BUILD_NUMBER}"
+def tillerVersion = 'v2.12.2'
+def aliRegistry = 'registry.cn-beijing.aliyuncs.com'
+def envLabel = 'devLabel'
+def dockerRepoName = ''
+def gjwChartBranch = 'fat'
+def namespace = 'glodon-goujianku'
+def helmReleaseName = params.SERVICE_NAME
+
+if ("pro".equalsIgnoreCase(params.ENV)) {
+	envLabel = 'proLabel'
+        dockerRepoName = 'gjw_hwy_pro'
+        gjwChartBranch = 'pro-micro'
+}
+
+if ("fat".equalsIgnoreCase(params.ENV)) {
+	envLabel = 'fatLabel'
+        dockerRepoName = "gjw_${params.ENV}"
+}
+
+def chartRepo = 'ssh://git@geekssh.glodon.com:7999/goujianwu/gjw-chart.git'
+def serviceYaml = "${params.SERVICE_NAME}.yaml"
+
+def configs = [
+        pipeline: [
+                slaveLabel: envLabel,
+                logLevel: 'debug',
+                post: [
+                        emailNotify: [
+                                receivers: params.EMAIL_TO,
+                                subject: "【${params.ENV}】Deployed Service 【${params.SERVICE_NAME}】",
+                                emailTemplateName: 'build',
+                                serviceName: params.SERVICE_NAME,
+                                prUrl: "none",
+                                prTitle: "Notification of deployment ${params.SERVICE_NAME}",
+                                prDescription: "Deployed ${params.SERVICE_NAME}",
+                                prAuthor: 'glodon-goujianku',
+                                prFromBranch: params.REPO_BRANCH
+                        ]
+                ]
+        ],
+        slaveTemplate: [
+                containers: [
+                        helm: [
+                            imageTag: tillerVersion
+                        ]
+                ]
+        ],
+        stages: [
+                gitPullCode: [
+                        name: 'pull code',
+                        usernamePasswordCredentialId: 'gjw-geek-account',
+                        repoUrl: params.REPO_URL,
+                        branch: params.REPO_BRANCH
+                ],
+                mavenBuild : [
+                        skip:  params.MAVEN_SKIP?:false,
+                        name: 'maven package',
+                        settingsId: 'gjk-private-settings',
+                        enableSonarScanner: false,
+                        sonarBranch: params.REPO_BRANCH,
+                        withMavenOptions: [
+                                openTasksPublisher(disabled: true),
+                                dependenciesFingerprintPublisher(disabled: true),
+                                artifactsPublisher(disabled: true),
+                                jgivenPublisher(disabled: true),
+                                junitPublisher(disabled: true),
+                                invokerPublisher(disabled: true),
+                                findbugsPublisher(disabled: true),
+                                concordionPublisher(disabled: true),
+                                pipelineGraphPublisher(disabled: true)
+                        ],
+                        goals: params.MVN_GOALS
+                ],
+                dockerBuild: [
+                        skip:  params.DOCKER_SKIP?:false,
+                        name: 'make image',
+                        usernamePasswordCredentialId: 'gjw_ali_docker_registry_credential',
+                        registryUrl: aliRegistry,
+                        repoName: dockerRepoName,
+                        imageName: params.SERVICE_NAME,
+                        tag: tagName,
+                        dockerfileLocation: "${params.DOCKERFILE_LOCATION}Dockerfile"
+                ],
+                fetchChart : [
+                        skip:  params.CHART_SKIP?:false,
+                        name: 'publish repo',
+                        chartRepoUrl: chartRepo,
+                        chartBranch: gjwChartBranch,
+                        serviceName: params.SERVICE_NAME,
+                        serviceBranch: params.REPO_BRANCH,
+                        imageTag: tagName,
+                        valuesFilePath: serviceYaml,
+                        sshCredentialId: 'gjw-geek-ssh-key'
+                ],
+                helmDeploy: [
+                        skip:  params.HELM_SKIP?:false,
+                        name: 'helm upgrade',
+                        tillerHostCredentialId: params.TILLER_HOST,
+                        valuesFilePath: serviceYaml,
+                        releaseName: helmReleaseName,
+                        chartName: 'gjw-project',
+                        releaseNamespace: namespace
+                ]
+        ]
+]
+
+execPipeline(configs)

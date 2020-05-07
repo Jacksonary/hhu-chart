@@ -1,0 +1,50 @@
+deploy:
+  app: account-server
+  image:
+    tag: p_10
+
+service:
+  readinessProbe:
+    httpGet:
+      path: "/gjw-account/go"
+  
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: "/gjw-account/go"
+
+  ingress:
+    enabled: true
+    tls: 
+      - hosts:
+        - account.goujianwu.com
+        secretName: gjw-tls
+    annotations: 
+      nginx.ingress.kubernetes.io/rewrite-target: /gjw-account/$1
+      nginx.ingress.kubernetes.io/proxy-cookie-path: "/account /"
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/ssl-ciphers: "ALL:!aNULL:!EXPORT56:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP"
+      nginx.ingress.kubernetes.io/server-snippet: |
+        set $corsHost '';
+        set $httpHost '';
+        set $httpHeaders 'DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Authorization,X-GJW-OperationKey,Preview-Authorization,Content-Type,X-Forwarded-For,xfilecategory,xfilename,xfilesize,X-Analyzer-Trigger-Region';
+        if ( $http_origin ~* ^(https?:\/\/.*\.goujianwu\.com) ){
+          set $corsHost $http_origin;
+        }
+
+        add_header Access-Control-Allow-Origin $corsHost always;
+        add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS, PATCH';
+        add_header Access-Control-Allow-Headers $httpHeaders;
+        add_header Access-Control-Allow-Credentials 'true';
+      nginx.ingress.kubernetes.io/configuration-snippet: |
+        if ($request_method = OPTIONS ) {
+          return 200;
+        }
+    serpaths:
+      - hosts: account.goujianwu.com
+        extraPath:
+        - path: /($|.*)
+          serviceName: "account-server"
+          servicePort: 80
+
+apolloServerId: -Dapp.id=zHSAMxJhfDmcMow2UDoAX7VjuTyYEz19_gjw-account

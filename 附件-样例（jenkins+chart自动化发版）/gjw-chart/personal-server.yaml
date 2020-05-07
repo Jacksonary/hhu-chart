@@ -1,0 +1,16 @@
+deploy:
+  app: personal-server
+  image:
+    tag: p_10
+
+service:
+  readinessProbe:
+    httpGet:
+      path: "/gjw-personal/go"
+  
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: "/gjw-personal/go"
+
+apolloServerId: -Dapp.id=zHSAMxJhfDmcMow2UDoAX7VjuTyYEz19_gjw-personal

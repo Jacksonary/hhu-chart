@@ -1,0 +1,45 @@
+deploy:
+  app: bops-gateway
+  image:
+    tag: p_8
+
+service:
+  readinessProbe:
+    httpGet:
+      path: "/go"
+  
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: "/go"
+
+  ingress:
+    enabled: true
+    tls: 
+      - hosts:
+        - bops.goujianwu.com
+        secretName: gjw-tls
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-redirect: "false"
+      nginx.ingress.kubernetes.io/ssl-ciphers: "ALL:!aNULL:!EXPORT56:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP"
+      nginx.ingress.kubernetes.io/server-snippet: |
+        # 静态资源
+        rewrite /$ /bops/resources/dist/index.html break;
+        rewrite /favicon.ico https://static.goujianwu.com/favicon.ico break;
+        rewrite /resources/dist/(.*) https://static.goujianwu.com/bops/resources/dist/$1 break;
+        rewrite /bim-resource/(.*) https://static.goujianwu.com/bim-resource/$1 break;
+    serpaths:
+      - hosts: bops.goujianwu.com
+        extraPath:
+
+        - path: /api
+          serviceName: "bops-gateway"
+          servicePort: 80
+
+        - path: /
+          serviceName: "bops-static"
+          servicePort: 80
+      
+apolloServerId: -Dapp.id=zHSAMxJhfDmcMow2UDoAX7VjuTyYEz19_gjw-bops
+
+remoteDebugNodePort: 30808

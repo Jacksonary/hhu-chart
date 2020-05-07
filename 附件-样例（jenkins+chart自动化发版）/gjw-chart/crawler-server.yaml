@@ -1,0 +1,16 @@
+deploy:
+  app: crawler-bim
+  image:
+    tag: p_11
+
+service:
+  readinessProbe:
+    httpGet:
+      path: "/crawler/go"
+  
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: "/crawler/go"
+
+apolloServerId: -Dapp.id=zHSAMxJhfDmcMow2UDoAX7VjuTyYEz19_crawler

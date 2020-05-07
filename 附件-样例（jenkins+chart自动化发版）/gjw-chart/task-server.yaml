@@ -1,0 +1,51 @@
+deploy:
+  app: task-server
+  image:
+    tag: p_21
+
+service:
+  readinessProbe:
+    httpGet:
+      path: "/gjw-task/go"
+  
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: "/gjw-task/go"
+
+  ingress:
+    enabled: true
+    tls: 
+      - hosts:
+        - task.goujianwu.com
+        secretName: gjw-tls
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-redirect: "false"
+      nginx.ingress.kubernetes.io/ssl-ciphers: "ALL:!aNULL:!EXPORT56:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP"
+      nginx.ingress.kubernetes.io/server-snippet: |
+        if ($request_uri ~* gjw-(.*)/internal){
+           return 403;
+        }
+
+        # task旧配置，兼容上个版本的回调
+        rewrite /internal/worker/skp_process(.*) /gjw-task/worker/skp_process$1 break;
+        rewrite /internal/(translate|job)/callback /gjw-task/bimface/callback/$1 break; 
+        rewrite /task/internal/(.*) /gjw-task/$1 break;
+        rewrite /internal/(.*) /gjw-task/$1 break;
+
+        # gjw-store
+        rewrite /stores/(.*) /gjw-store/stores/$1 break;
+        # gjw-task
+        rewrite /($|.*) /gjw-task/$1 break;
+    serpaths:
+      - hosts: task.goujianwu.com
+        extraPath:
+        - path: /gjw-task
+          serviceName: "task-server"
+          servicePort: 80
+
+        - path: /gjw-store
+          serviceName: "store-server"
+          servicePort: 80
+
+apolloServerId: -Dapp.id=zHSAMxJhfDmcMow2UDoAX7VjuTyYEz19_gjw-task
